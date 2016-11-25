@@ -4,27 +4,283 @@
 
 	<title>Dev Test</title>
 	
+    <link href="style.css" rel="stylesheet" type="text/css" />
+    
 	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.0/jquery.min.js"></script>
 	<script src="lazyload.js"></script>
 	
 </head>
 <body>
+	<div class="filter-controls">
+        <div id="insta-filter" class="fcontrol active">Instagram</div>
+        <div id="promoted-filter" class="fcontrol active">Promoted</div>
+        <div id="twitter-filter" class="fcontrol active">Twitter</div>
+    </div>
 	<div class="container">
-
+    	
 	</div>
+    
 	<script>
-
-		$.getJSON( "posts.json", function( data ) {
-		  var items = [];
-		  $.each( data, function( key, val ) {
-			items.push( "<li id='" + key + "'>" + val + "</li>" );
-		  });
-		 
-		  $( "<ul/>", {
-			"class": "my-new-list",
-			html: items.join( "" )
-		  }).appendTo( "body" );
+		$(document).ready(function() {
+			
+			//gets rid of text highlighting on filter buttons
+			$('.fcontrol').bind('selectstart dragstart', function(e) {
+			  e.preventDefault();
+			  return false;
+			});
+			
+			
+			loadMore();
+			$('.fcontrol').click(function() {
+				$(this).toggleClass('active');
+			});
+			$('#insta-filter').click(function() {
+				$('.card').each(function() {
+					if($(this).attr('data-service') === 'Instagram' && $(this).hasClass('active')) {
+						$(this).removeClass('active');	
+					}
+					else if($(this).attr('data-service') === 'Instagram' && !$(this).hasClass('active')) {
+						$(this).addClass('active');	
+					}
+				});
+				clearFix();
+			});
+			$('#twitter-filter').click(function() {
+				$('.card').each(function() {
+					if($(this).attr('data-service') === 'Twitter' && $(this).hasClass('active')) {
+						$(this).removeClass('active');	
+					}
+					else if($(this).attr('data-service') === 'Twitter' && !$(this).hasClass('active')) {
+						$(this).addClass('active');	
+					}
+				});
+				clearFix();
+			});
+			$('#promoted-filter').click(function() {
+				$('.card').each(function() {
+					if($(this).attr('data-service') === 'Manual' && $(this).hasClass('active')) {
+						$(this).removeClass('active');	
+					}
+					else if($(this).attr('data-service') === 'Manual' && !$(this).hasClass('active')) {
+						$(this).addClass('active');	
+					}
+				});
+				clearFix();
+			});
 		});
+		
+		//prevents errors caused by rapid resize event firing
+		
+		$(function() {
+			var $window = $(window);
+			var width = $window.width();
+			var height = $window.height();
+		
+			setInterval(function () {
+				if ((width != $window.width()) || (height != $window.height())) {
+					width = $window.width();
+					height = $window.height();
+		
+					clearFix();
+				}
+			}, 300);
+		});
+		
+		//Functions below allow for grid layout without reloading dom on resize
+		
+		function clearFix() {
+			if(window.innerWidth > 1024) {
+				clearFixDesktop();
+			} else if(window.innerWidth > 668) {
+				clearFixTablet();	
+			} else {
+				clearFixMobile();	
+			}
+		}
+		
+		function clearFixDesktop() {
+			$('.card').removeClass('clear-left');
+			var count = 0;
+			$('.card').each(function() {
+				if($(this).hasClass('active')) {
+					if (count % 3 == 0) {
+						$(this).addClass('clear-left');
+					} else {
+						$(this).removeClass('clear-left');	
+					}
+					count++;	
+				}
+			});
+		};
+		
+		function clearFixTablet() {
+			$('.card').removeClass('clear-left');
+			var count = 0;
+			$('.card').each(function() {
+				if($(this).hasClass('active')) {
+					if (count % 2 == 0) {
+						$(this).addClass('clear-left');
+					} else {
+						$(this).removeClass('clear-left');	
+					}
+					count++;	
+				}
+			});
+		};
+		function clearFixMobile() {
+			$('.card').removeClass('clear-left');
+		};
+		
+		//Consumes the web service. Probably should have been done with react
+		
+		function loadMore() {
+			$.get("posts.json", function(data){
+				$.each(data.items, function(key, val) {
+					
+				   var imageUrl = '';
+				   if (val.item_data.image_url != null) {
+					   imageUrl = '<div class="image-container"><img class="lazy" data-original="' + val.item_data.image_url + '" />';
+				   }
+				   
+				   if(val.service_name === 'Manual') {
+				   	   var cardIcon = '<img class="card-icon" src="manual.png" />';
+					   if($('#promoted-filter').hasClass('active')) {
+						   $('.container').append(
+							 '<div class="card manual active" data-service=' + val.service_name + '>' + 
+							 '<div class="service">' +
+							 cardIcon +
+							 '</div>' + imageUrl +
+							 '<p>' + val.item_data.text + '</p>' +
+							 '<p><a target="_blank" href="' + val.item_data.link + '" >' + val.item_data.link_text + '</a></p>' +
+							 '<p>Posted: ' + val.item_published + '</p>' +
+							 '</div>'
+							); 
+					   } else {
+						   $('.container').append(
+							 '<div class="card manual" data-service=' + val.service_name + '>' + 
+							 '<div class="service">' +
+							 val.service_name + ' icon goes here' +
+							 '</div>' + imageUrl +
+							 '<p>' + val.item_data.text + '</p>' +
+							 '<p><a target="_blank" href="' + val.item_data.link + '" >' + val.item_data.link_text + '</a></p>' +
+							 '<p>Posted: ' + val.item_published + '</p>' +
+							 '</div>'
+							); 
+					   }
+						  
+				   } else if(val.service_name === 'Twitter') {
+					   var cardIcon = '<img class="card-icon" src="twitter.png" />';
+					   var textFormatted = val.item_data.tweet;
+					   var temp = textFormatted.split(' ');
+					   for (var i = 0; i < temp.length; i++) {
+						  if(temp[i].indexOf('http') !== -1) {
+							temp[i] = '<a target="_blank" href="' + temp[i] + '">' + temp[i] + '</a>';  
+						  }
+						  if(temp[i].indexOf('@') !== -1) {
+							var tempTwo = temp[i].replace('@', '') 
+							temp[i] = '<a target="_blank" href="https://www.twitter.com/' + tempTwo + '">' + temp[i] + '</a>';  
+						  }
+						  if(temp[i].indexOf('#') !== -1) {
+							var tempTwo = temp[i].replace('#', '') 
+							temp[i] = '<a target="_blank" href="https://www.twitter.com/hashtag/' + tempTwo + '">' + temp[i] + '</a>';  
+						  }
+					   }
+					   textFormatted = temp.join(' ');
+					   
+					   if($('#twitter-filter').hasClass('active')) {
+						   $('.container').append(
+							 '<div class="card twitter active" data-service=' + val.service_name + '>' + 
+							 '<div class="service">' +
+							 cardIcon +
+							 '</div>' + imageUrl +
+							 '<h2 class="twitter-header">' + val.item_data.user.username + '</h2>' +
+							 '<p>' + textFormatted + '</p>' +
+							 '<p>Posted: ' + val.item_published + '</p>' +
+							 '</div>'
+							);  
+					   } else {
+						   $('.container').append(
+							 '<div class="card twitter" data-service=' + val.service_name + '>' + 
+							 '<div class="service">' +
+							 cardIcon +
+							 '</div>' + imageUrl +
+							 '<h2 class="twitter-header">' + val.item_data.user.username + '</h2>' +
+							 '<p>' + textFormatted + '</p>' +
+							 '<p>Posted: ' + val.item_published + '</p>' +
+							 '</div>'
+							);  
+					   }
+					   
+					   
+					   
+				   } else if(val.service_name === 'Instagram') {
+					   var cardIcon = '<img class="card-icon" src="insta.png" />';
+					   instaImageUrl = '<div class="image-container"><img class="lazy" data-original="' + val.item_data.image.medium + '" />';
+					   var textFormatted = val.item_data.caption;
+					   var temp = textFormatted.split(' ');
+					   for (var i = 0; i < temp.length; i++) {
+						  if(temp[i].indexOf('http') !== -1) {
+							temp[i] = '<a target="_blank" href="' + temp[i] + '">' + temp[i] + '</a>';  
+						  }
+						  if(temp[i].indexOf('#') !== -1) {
+							var tempTwo = temp[i].replace('#', '')
+							temp[i] = '<a target="_blank" href="https://www.instagram.com/explore/tags/' + tempTwo +'">' + temp[i] + '</a>';  
+						  }
+					   }
+					   textFormatted = temp.join(' ');
+					   
+					   if($('#insta-filter').hasClass('active')) {
+						   $('.container').append(
+							 '<div class="card instagram active" data-service=' + val.service_name + '>' + 
+							 '<div class="service">' +
+							 cardIcon +
+							 '</div>' + instaImageUrl +
+							 '<h2 class="instagram-header">' + val.item_data.user.username + '</h2>' +
+							 '<p>' + textFormatted + '</p>' +
+							 '<p>Posted: ' + val.item_published + '</p>' +
+							 '</div>'
+							);  
+					   } else {
+						   $('.container').append(
+							 '<div class="card instagram" data-service=' + val.service_name + '>' + 
+							 '<div class="service">' +
+							 cardIcon +
+							 '</div>' + instaImageUrl +
+							 '<h2 class="instagram-header">' + val.item_data.user.username + '</h2>' +
+							 '<p>' + textFormatted + '</p>' +
+							 '<p>Posted: ' + val.item_published + '</p>' +
+							 '</div>'
+							);  
+					   }
+					  
+				   }
+					
+				});
+				
+			   $('.container').append(
+				 '<button class="card" id="loadMore">Load more</button>'
+			   );
+				
+			   //lazy load library doing all the work here 
+			   $(function() {
+				  $("img.lazy").lazyload();
+			   }); 
+			   
+			   $('#loadMore').click(function() {
+				  $(this).fadeOut().remove();
+				  loadMore();
+			   });
+			   //attach the clearfix class to new entries
+			   clearFix();
+			   //add artificial wait to remove async response for users with fast connection.
+			   setTimeout(function() { $('.loading').fadeOut(1000, function() {
+				$(this).remove();   
+			   }); }, 250);
+			});
+			//add loading message for async -- shamefully lazy styling
+			$('.container').append('<div class="loading" style="position: fixed; z-index: 2; left: 0; right: 0; margin: 0 auto; background: rgba(100,100,100,.5); text-align: center;">Loading</div>');
+				
+		}
 
 	</script>
 </body>
